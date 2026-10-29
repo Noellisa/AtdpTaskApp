@@ -1,0 +1,6 @@
+{
+  "name": "ATDP Workforce Flow",
+  "description": "Employee task tracking, deliverable submission, supervisor review, voice instruction recording, and workforce directory platform for ATDP.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,659 @@
+{
+  "entities": {
+    "Employee": {
+      "title": "Employee",
+      "description": "ATDP employee record containing staff ID, onboarding status, personal, employment, document, and performance information.",
+      "type": "object",
+      "properties": {
+        "workspaceOwnerId": {
+          "type": "string",
+          "description": "UID of the authenticated workspace owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "staffId": {
+          "type": "string",
+          "description": "Official ATDP Employee ID code (e.g., ATDP-2026-001).",
+          "maxLength": 40
+        },
+        "onboardingStatus": {
+          "type": "string",
+          "description": "Employee onboarding status.",
+          "enum": ["INVITED", "ACTIVE"]
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Full name of the employee.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Official ATDP email address used for invite matching.",
+          "maxLength": 150
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number.",
+          "maxLength": 40
+        },
+        "role": {
+          "type": "string",
+          "description": "Job title or position.",
+          "maxLength": 100
+        },
+        "accessLevel": {
+          "type": "string",
+          "description": "Platform permission tier.",
+          "enum": ["Employee", "Supervisor", "Top Management"]
+        },
+        "department": {
+          "type": "string",
+          "description": "Assigned ATDP department.",
+          "maxLength": 80
+        },
+        "desk": {
+          "type": "string",
+          "description": "Specific desk or unit within the department.",
+          "maxLength": 100
+        },
+        "managerName": {
+          "type": "string",
+          "description": "Name of the reporting supervisor.",
+          "maxLength": 120
+        },
+        "joinDate": {
+          "type": "string",
+          "description": "Date of joining ATDP.",
+          "maxLength": 40
+        },
+        "location": {
+          "type": "string",
+          "description": "Office location.",
+          "maxLength": 100
+        },
+        "nationalId": {
+          "type": "string",
+          "description": "National ID reference number.",
+          "maxLength": 60
+        },
+        "bio": {
+          "type": "string",
+          "description": "Professional summary and responsibilities.",
+          "maxLength": 600
+        },
+        "avatarColor": {
+          "type": "string",
+          "description": "Avatar styling identifier.",
+          "maxLength": 40
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "Compressed profile photo data URL or image link.",
+          "maxLength": 350000
+        },
+        "badges": {
+          "type": "array",
+          "description": "Role and responsibility badges (max 10)."
+        },
+        "documents": {
+          "type": "array",
+          "description": "HR and employment documents (max 10)."
+        },
+        "performanceScore": {
+          "type": "number",
+          "description": "Overall performance score percentage (0-100)."
+        },
+        "onTimeRate": {
+          "type": "number",
+          "description": "On-time task completion percentage (0-100)."
+        },
+        "performanceReviews": {
+          "type": "array",
+          "description": "Supervisor performance review history entries (max 10)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of creation.",
+          "maxLength": 60
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update.",
+          "maxLength": 60
+        }
+      },
+      "required": [
+        "workspaceOwnerId",
+        "staffId",
+        "onboardingStatus",
+        "fullName",
+        "email",
+        "phone",
+        "role",
+        "accessLevel",
+        "department",
+        "desk",
+        "managerName",
+        "joinDate",
+        "location",
+        "nationalId",
+        "bio",
+        "avatarColor",
+        "badges",
+        "documents",
+        "performanceScore",
+        "onTimeRate",
+        "performanceReviews",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Employee task record with subtasks, deliverables, supervisor review feedback, and history.",
+      "type": "object",
+      "properties": {
+        "workspaceOwnerId": {
+          "type": "string",
+          "description": "UID of the authenticated workspace owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Task title.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed task instructions and acceptance criteria.",
+          "maxLength": 2000
+        },
+        "status": {
+          "type": "string",
+          "description": "Lifecycle status of the task.",
+          "enum": [
+            "ASSIGNED",
+            "IN PROGRESS",
+            "SUBMITTED",
+            "UNDER REVIEW",
+            "COMPLETED",
+            "CANCELLED"
+          ]
+        },
+        "priority": {
+          "type": "string",
+          "description": "Priority level.",
+          "enum": ["Low", "Medium", "High", "Critical"]
+        },
+        "department": {
+          "type": "string",
+          "description": "Department responsible for the task.",
+          "maxLength": 80
+        },
+        "assignees": {
+          "type": "array",
+          "description": "Assigned employee names (max 10)."
+        },
+        "reviewer": {
+          "type": "string",
+          "description": "Supervisor reviewing the task.",
+          "maxLength": 120
+        },
+        "owner": {
+          "type": "string",
+          "description": "Primary task owner.",
+          "maxLength": 120
+        },
+        "deadline": {
+          "type": "string",
+          "description": "Formatted deadline date string.",
+          "maxLength": 40
+        },
+        "deadlineIso": {
+          "type": "string",
+          "description": "ISO date string for sorting deadlines.",
+          "maxLength": 40
+        },
+        "subtasks": {
+          "type": "array",
+          "description": "Checklist of subtasks (max 10)."
+        },
+        "deliverables": {
+          "type": "array",
+          "description": "Versioned task uploads and deliverable links (max 10)."
+        },
+        "comments": {
+          "type": "array",
+          "description": "Supervisor feedback and employee comments (max 10)."
+        },
+        "history": {
+          "type": "array",
+          "description": "Audit trail of task events (max 10)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of creation.",
+          "maxLength": 60
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update.",
+          "maxLength": 60
+        }
+      },
+      "required": [
+        "workspaceOwnerId",
+        "title",
+        "description",
+        "status",
+        "priority",
+        "department",
+        "assignees",
+        "reviewer",
+        "owner",
+        "deadline",
+        "deadlineIso",
+        "subtasks",
+        "deliverables",
+        "comments",
+        "history",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Instruction": {
+      "title": "Instruction",
+      "description": "Recorded voice or text instruction awaiting confirmation or converted into a task.",
+      "type": "object",
+      "properties": {
+        "workspaceOwnerId": {
+          "type": "string",
+          "description": "UID of the authenticated workspace owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Instruction summary title.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "department": {
+          "type": "string",
+          "description": "Target department.",
+          "maxLength": 80
+        },
+        "recordedBy": {
+          "type": "string",
+          "description": "Name of the person who recorded the instruction.",
+          "maxLength": 120
+        },
+        "assignedTo": {
+          "type": "string",
+          "description": "Employee assigned to confirm and execute.",
+          "maxLength": 120
+        },
+        "notes": {
+          "type": "string",
+          "description": "Spoken transcript or instruction details.",
+          "maxLength": 1500
+        },
+        "durationSec": {
+          "type": "number",
+          "description": "Audio duration in seconds."
+        },
+        "hasAudio": {
+          "type": "boolean",
+          "description": "Whether an audio clip is attached."
+        },
+        "audioDataUrl": {
+          "type": "string",
+          "description": "Base64 audio data URL or empty string.",
+          "maxLength": 500000
+        },
+        "status": {
+          "type": "string",
+          "description": "Confirmation state.",
+          "enum": ["PENDING", "CONFIRMED"]
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Display timestamp.",
+          "maxLength": 60
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update.",
+          "maxLength": 60
+        }
+      },
+      "required": [
+        "workspaceOwnerId",
+        "title",
+        "department",
+        "recordedBy",
+        "assignedTo",
+        "notes",
+        "durationSec",
+        "hasAudio",
+        "audioDataUrl",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Department": {
+      "title": "Department",
+      "description": "ATDP organizational department record.",
+      "type": "object",
+      "properties": {
+        "workspaceOwnerId": {
+          "type": "string",
+          "description": "UID of the authenticated workspace owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Department name.",
+          "maxLength": 80
+        },
+        "headName": {
+          "type": "string",
+          "description": "Department head or supervisor.",
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "description": "Mandate and focus area.",
+          "maxLength": 500
+        },
+        "desks": {
+          "type": "array",
+          "description": "List of operational desks in the department (max 10)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp.",
+          "maxLength": 60
+        }
+      },
+      "required": [
+        "workspaceOwnerId",
+        "name",
+        "headName",
+        "description",
+        "desks",
+        "createdAt"
+      ]
+    },
+    "Meeting": {
+      "title": "Meeting",
+      "description": "Scheduled ATDP team or department meeting.",
+      "type": "object",
+      "properties": {
+        "workspaceOwnerId": {
+          "type": "string",
+          "description": "UID of the authenticated workspace owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Meeting title.",
+          "maxLength": 160
+        },
+        "department": {
+          "type": "string",
+          "description": "Host department.",
+          "maxLength": 80
+        },
+        "organizer": {
+          "type": "string",
+          "description": "Organizer name.",
+          "maxLength": 120
+        },
+        "date": {
+          "type": "string",
+          "description": "Formatted meeting date.",
+          "maxLength": 40
+        },
+        "time": {
+          "type": "string",
+          "description": "Formatted meeting time.",
+          "maxLength": 40
+        },
+        "locationOrLink": {
+          "type": "string",
+          "description": "Room or video link.",
+          "maxLength": 200
+        },
+        "agenda": {
+          "type": "string",
+          "description": "Meeting agenda notes.",
+          "maxLength": 1000
+        },
+        "attendees": {
+          "type": "array",
+          "description": "Participant names (max 10)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp.",
+          "maxLength": 60
+        }
+      },
+      "required": [
+        "workspaceOwnerId",
+        "title",
+        "department",
+        "organizer",
+        "date",
+        "time",
+        "locationOrLink",
+        "agenda",
+        "attendees",
+        "createdAt"
+      ]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Organization-wide or department broadcast announcement.",
+      "type": "object",
+      "properties": {
+        "workspaceOwnerId": {
+          "type": "string",
+          "description": "UID of the authenticated workspace owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Announcement headline.",
+          "maxLength": 200
+        },
+        "body": {
+          "type": "string",
+          "description": "Announcement content.",
+          "maxLength": 2000
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Name of poster.",
+          "maxLength": 120
+        },
+        "authorRole": {
+          "type": "string",
+          "description": "Role of poster.",
+          "maxLength": 100
+        },
+        "department": {
+          "type": "string",
+          "description": "Target department or All Departments.",
+          "maxLength": 80
+        },
+        "priority": {
+          "type": "string",
+          "description": "Urgency level.",
+          "enum": ["Normal", "Important", "Urgent"]
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Display date.",
+          "maxLength": 60
+        }
+      },
+      "required": [
+        "workspaceOwnerId",
+        "title",
+        "body",
+        "authorName",
+        "authorRole",
+        "department",
+        "priority",
+        "createdAt"
+      ]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Real-time status alert and push notification record.",
+      "type": "object",
+      "properties": {
+        "workspaceOwnerId": {
+          "type": "string",
+          "description": "UID of the authenticated workspace owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Short alert title.",
+          "maxLength": 160
+        },
+        "message": {
+          "type": "string",
+          "description": "Detailed notification body.",
+          "maxLength": 500
+        },
+        "category": {
+          "type": "string",
+          "description": "Notification type.",
+          "enum": ["task_status", "feedback", "instruction", "deadline", "announcement"]
+        },
+        "recipientName": {
+          "type": "string",
+          "description": "Target employee or All.",
+          "maxLength": 120
+        },
+        "read": {
+          "type": "boolean",
+          "description": "Whether notification has been read."
+        },
+        "relatedTaskId": {
+          "type": "string",
+          "description": "Optional linked task ID.",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Display timestamp.",
+          "maxLength": 60
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp.",
+          "maxLength": 60
+        }
+      },
+      "required": [
+        "workspaceOwnerId",
+        "title",
+        "message",
+        "category",
+        "recipientName",
+        "read",
+        "relatedTaskId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Recent activity feed item on the ATDP Dashboard.",
+      "type": "object",
+      "properties": {
+        "workspaceOwnerId": {
+          "type": "string",
+          "description": "UID of the authenticated workspace owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "headline": {
+          "type": "string",
+          "description": "Primary activity description.",
+          "maxLength": 240
+        },
+        "subtext": {
+          "type": "string",
+          "description": "Date and related task/department context.",
+          "maxLength": 240
+        },
+        "actorName": {
+          "type": "string",
+          "description": "User who triggered the event.",
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp for ordering.",
+          "maxLength": 60
+        }
+      },
+      "required": [
+        "workspaceOwnerId",
+        "headline",
+        "subtext",
+        "actorName",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/employees/{employeeId}": {
+      "schema": { "$ref": "#/entities/Employee" },
+      "description": "ATDP employee directory, personal/employment data, documents, and performance history."
+    },
+    "/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "ATDP tasks with subtasks, deliverables, review comments, and status history."
+    },
+    "/instructions/{instructionId}": {
+      "schema": { "$ref": "#/entities/Instruction" },
+      "description": "Voice and text instructions recorded by team members pending confirmation."
+    },
+    "/departments/{departmentId}": {
+      "schema": { "$ref": "#/entities/Department" },
+      "description": "ATDP departments and operational desks."
+    },
+    "/meetings/{meetingId}": {
+      "schema": { "$ref": "#/entities/Meeting" },
+      "description": "Scheduled ATDP meetings."
+    },
+    "/announcements/{announcementId}": {
+      "schema": { "$ref": "#/entities/Announcement" },
+      "description": "ATDP organization-wide announcements."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Real-time notifications for task status updates and feedback."
+    },
+    "/activityLogs/{logId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Recent activity feed items."
+    }
+  }
+}

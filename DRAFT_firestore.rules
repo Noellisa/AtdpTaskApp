@@ -1,0 +1,369 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'opokudarkonoellisa@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Connection test endpoint
+    match /test/{docId} {
+      allow get: if isValidId(docId);
+      allow list, create, update, delete: if false;
+    }
+
+    // Admins collection (System-managed)
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && request.auth.uid == adminId;
+      allow list, create, update, delete: if false;
+    }
+
+    // 1. Employees Collection
+    function isValidEmployee(data) {
+      return data.workspaceOwnerId is string && data.workspaceOwnerId.size() <= 128 && data.workspaceOwnerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.workspaceOwnerId == request.auth.uid &&
+        data.staffId is string && data.staffId.size() <= 40 &&
+        data.onboardingStatus is string && data.onboardingStatus in ['INVITED', 'ACTIVE'] &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120 &&
+        data.email is string && data.email.size() <= 150 &&
+        data.phone is string && data.phone.size() <= 40 &&
+        data.role is string && data.role.size() <= 100 &&
+        data.accessLevel is string && data.accessLevel in ['Employee', 'Supervisor', 'Top Management'] &&
+        data.department is string && data.department.size() <= 80 &&
+        data.desk is string && data.desk.size() <= 100 &&
+        data.managerName is string && data.managerName.size() <= 120 &&
+        data.joinDate is string && data.joinDate.size() <= 40 &&
+        data.location is string && data.location.size() <= 100 &&
+        data.nationalId is string && data.nationalId.size() <= 60 &&
+        data.bio is string && data.bio.size() <= 600 &&
+        data.avatarColor is string && data.avatarColor.size() <= 40 &&
+        (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 350000)) &&
+        data.badges is list && data.badges.size() <= 10 && (data.badges.size() == 0 || (data.badges[0] is string && data.badges[0].size() <= 80)) &&
+        data.documents is list && data.documents.size() <= 10 && (data.documents.size() == 0 || data.documents[0] is map) &&
+        data.performanceScore is number && data.performanceScore >= 0 && data.performanceScore <= 100 &&
+        data.onTimeRate is number && data.onTimeRate >= 0 && data.onTimeRate <= 100 &&
+        data.performanceReviews is list && data.performanceReviews.size() <= 10 && (data.performanceReviews.size() == 0 || data.performanceReviews[0] is map) &&
+        data.createdAt is string && data.createdAt.size() <= 60 &&
+        data.updatedAt is string && data.updatedAt.size() <= 60;
+    }
+
+    match /employees/{employeeId} {
+      allow get: if isSignedIn() && isValidId(employeeId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() && isValidId(employeeId) &&
+        incoming().keys().hasAll([
+          'workspaceOwnerId', 'staffId', 'onboardingStatus', 'fullName', 'email', 'phone', 'role', 'accessLevel',
+          'department', 'desk', 'managerName', 'joinDate', 'location', 'nationalId',
+          'bio', 'avatarColor', 'badges', 'documents', 'performanceScore',
+          'onTimeRate', 'performanceReviews', 'createdAt', 'updatedAt'
+        ]) &&
+        incoming().keys().hasOnly([
+          'workspaceOwnerId', 'staffId', 'onboardingStatus', 'fullName', 'email', 'phone', 'role', 'accessLevel',
+          'department', 'desk', 'managerName', 'joinDate', 'location', 'nationalId',
+          'bio', 'avatarColor', 'avatarUrl', 'badges', 'documents', 'performanceScore',
+          'onTimeRate', 'performanceReviews', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidEmployee(incoming());
+      allow update: if isVerifiedUser() && isValidId(employeeId) && isValidEmployee(incoming()) &&
+        incoming().workspaceOwnerId == existing().workspaceOwnerId &&
+        incoming().createdAt == existing().createdAt && (
+          isAdmin() ||
+          (existing().workspaceOwnerId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'staffId', 'onboardingStatus', 'fullName', 'email', 'phone', 'role', 'accessLevel', 'department', 'desk',
+              'managerName', 'joinDate', 'location', 'nationalId', 'bio', 'avatarColor', 'avatarUrl',
+              'badges', 'documents', 'performanceScore', 'onTimeRate', 'performanceReviews', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(employeeId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+    }
+
+    // 2. Tasks Collection
+    function isValidTask(data) {
+      return data.workspaceOwnerId is string && data.workspaceOwnerId.size() <= 128 && data.workspaceOwnerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.workspaceOwnerId == request.auth.uid &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+        data.description is string && data.description.size() <= 2000 &&
+        data.status is string && data.status in ['PENDING CONFIRMATION', 'BACKLOG', 'ASSIGNED', 'IN PROGRESS', 'SUBMITTED', 'UNDER REVIEW', 'COMPLETED', 'ON HOLD', 'BLOCKED', 'CANCELLED'] &&
+        data.priority is string && data.priority in ['Low', 'Medium', 'High', 'Critical'] &&
+        data.department is string && data.department.size() <= 80 &&
+        data.assignees is list && data.assignees.size() <= 10 && (data.assignees.size() == 0 || (data.assignees[0] is string && data.assignees[0].size() <= 120)) &&
+        data.reviewer is string && data.reviewer.size() <= 120 &&
+        data.owner is string && data.owner.size() <= 120 &&
+        data.deadline is string && data.deadline.size() <= 40 &&
+        data.deadlineIso is string && data.deadlineIso.size() <= 40 &&
+        data.subtasks is list && data.subtasks.size() <= 10 && (data.subtasks.size() == 0 || data.subtasks[0] is map) &&
+        data.deliverables is list && data.deliverables.size() <= 10 && (data.deliverables.size() == 0 || data.deliverables[0] is map) &&
+        data.comments is list && data.comments.size() <= 10 && (data.comments.size() == 0 || data.comments[0] is map) &&
+        data.history is list && data.history.size() <= 10 && (data.history.size() == 0 || data.history[0] is map) &&
+        data.createdAt is string && data.createdAt.size() <= 60 &&
+        data.updatedAt is string && data.updatedAt.size() <= 60;
+    }
+
+    match /tasks/{taskId} {
+      allow get: if isSignedIn() && isValidId(taskId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() && isValidId(taskId) &&
+        incoming().keys().hasAll([
+          'workspaceOwnerId', 'title', 'description', 'status', 'priority',
+          'department', 'assignees', 'reviewer', 'owner', 'deadline', 'deadlineIso',
+          'subtasks', 'deliverables', 'comments', 'history', 'createdAt', 'updatedAt'
+        ]) &&
+        incoming().keys().hasOnly([
+          'workspaceOwnerId', 'title', 'description', 'status', 'priority',
+          'department', 'assignees', 'reviewer', 'owner', 'deadline', 'deadlineIso',
+          'subtasks', 'deliverables', 'comments', 'history', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidTask(incoming());
+      allow update: if isVerifiedUser() && isValidId(taskId) && isValidTask(incoming()) &&
+        incoming().workspaceOwnerId == existing().workspaceOwnerId &&
+        incoming().createdAt == existing().createdAt && (
+          isAdmin() ||
+          (existing().workspaceOwnerId == request.auth.uid &&
+            !(existing().status in ['CANCELLED']) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'description', 'status', 'priority', 'department', 'assignees',
+              'reviewer', 'owner', 'deadline', 'deadlineIso', 'subtasks', 'deliverables',
+              'comments', 'history', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(taskId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+    }
+
+    // 3. Instructions Collection
+    function isValidInstruction(data) {
+      return data.workspaceOwnerId is string && data.workspaceOwnerId.size() <= 128 && data.workspaceOwnerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.workspaceOwnerId == request.auth.uid &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+        data.department is string && data.department.size() <= 80 &&
+        data.recordedBy is string && data.recordedBy.size() <= 120 &&
+        data.assignedTo is string && data.assignedTo.size() <= 120 &&
+        data.notes is string && data.notes.size() <= 1500 &&
+        data.durationSec is number && data.durationSec >= 0 && data.durationSec <= 3600 &&
+        data.hasAudio is bool &&
+        data.audioDataUrl is string && data.audioDataUrl.size() <= 500000 &&
+        data.status is string && data.status in ['PENDING', 'CONFIRMED'] &&
+        data.createdAt is string && data.createdAt.size() <= 60 &&
+        data.updatedAt is string && data.updatedAt.size() <= 60;
+    }
+
+    match /instructions/{instructionId} {
+      allow get: if isSignedIn() && isValidId(instructionId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() && isValidId(instructionId) &&
+        incoming().keys().hasAll([
+          'workspaceOwnerId', 'title', 'department', 'recordedBy', 'assignedTo',
+          'notes', 'durationSec', 'hasAudio', 'audioDataUrl', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        incoming().keys().hasOnly([
+          'workspaceOwnerId', 'title', 'department', 'recordedBy', 'assignedTo',
+          'notes', 'durationSec', 'hasAudio', 'audioDataUrl', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidInstruction(incoming());
+      allow update: if isVerifiedUser() && isValidId(instructionId) && isValidInstruction(incoming()) &&
+        incoming().workspaceOwnerId == existing().workspaceOwnerId &&
+        incoming().createdAt == existing().createdAt && (
+          isAdmin() ||
+          (existing().workspaceOwnerId == request.auth.uid &&
+            existing().status != 'CONFIRMED' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'notes', 'assignedTo', 'updatedAt'])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(instructionId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+    }
+
+    // 4. Departments Collection
+    function isValidDepartment(data) {
+      return data.workspaceOwnerId is string && data.workspaceOwnerId.size() <= 128 && data.workspaceOwnerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.workspaceOwnerId == request.auth.uid &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.headName is string && data.headName.size() <= 120 &&
+        data.description is string && data.description.size() <= 500 &&
+        data.desks is list && data.desks.size() <= 10 && (data.desks.size() == 0 || (data.desks[0] is string && data.desks[0].size() <= 100)) &&
+        data.createdAt is string && data.createdAt.size() <= 60;
+    }
+
+    match /departments/{departmentId} {
+      allow get: if isSignedIn() && isValidId(departmentId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() && isValidId(departmentId) &&
+        incoming().keys().hasAll(['workspaceOwnerId', 'name', 'headName', 'description', 'desks', 'createdAt']) &&
+        incoming().keys().hasOnly(['workspaceOwnerId', 'name', 'headName', 'description', 'desks', 'createdAt']) &&
+        isValidDepartment(incoming());
+      allow update: if isVerifiedUser() && isValidId(departmentId) && isValidDepartment(incoming()) &&
+        incoming().workspaceOwnerId == existing().workspaceOwnerId &&
+        incoming().createdAt == existing().createdAt && (
+          isAdmin() ||
+          (existing().workspaceOwnerId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['name', 'headName', 'description', 'desks'])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(departmentId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+    }
+
+    // 5. Meetings Collection
+    function isValidMeeting(data) {
+      return data.workspaceOwnerId is string && data.workspaceOwnerId.size() <= 128 && data.workspaceOwnerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.workspaceOwnerId == request.auth.uid &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+        data.department is string && data.department.size() <= 80 &&
+        data.organizer is string && data.organizer.size() <= 120 &&
+        data.date is string && data.date.size() <= 40 &&
+        data.time is string && data.time.size() <= 40 &&
+        data.locationOrLink is string && data.locationOrLink.size() <= 200 &&
+        data.agenda is string && data.agenda.size() <= 1000 &&
+        data.attendees is list && data.attendees.size() <= 10 && (data.attendees.size() == 0 || (data.attendees[0] is string && data.attendees[0].size() <= 120)) &&
+        data.createdAt is string && data.createdAt.size() <= 60;
+    }
+
+    match /meetings/{meetingId} {
+      allow get: if isSignedIn() && isValidId(meetingId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() && isValidId(meetingId) &&
+        incoming().keys().hasAll([
+          'workspaceOwnerId', 'title', 'department', 'organizer', 'date',
+          'time', 'locationOrLink', 'agenda', 'attendees', 'createdAt'
+        ]) &&
+        incoming().keys().hasOnly([
+          'workspaceOwnerId', 'title', 'department', 'organizer', 'date',
+          'time', 'locationOrLink', 'agenda', 'attendees', 'createdAt'
+        ]) &&
+        isValidMeeting(incoming());
+      allow update: if isVerifiedUser() && isValidId(meetingId) && isValidMeeting(incoming()) &&
+        incoming().workspaceOwnerId == existing().workspaceOwnerId &&
+        incoming().createdAt == existing().createdAt && (
+          isAdmin() ||
+          (existing().workspaceOwnerId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['title', 'department', 'date', 'time', 'locationOrLink', 'agenda', 'attendees'])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(meetingId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+    }
+
+    // 6. Announcements Collection
+    function isValidAnnouncement(data) {
+      return data.workspaceOwnerId is string && data.workspaceOwnerId.size() <= 128 && data.workspaceOwnerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.workspaceOwnerId == request.auth.uid &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+        data.body is string && data.body.size() <= 2000 &&
+        data.authorName is string && data.authorName.size() <= 120 &&
+        data.authorRole is string && data.authorRole.size() <= 100 &&
+        data.department is string && data.department.size() <= 80 &&
+        data.priority is string && data.priority in ['Normal', 'Important', 'Urgent'] &&
+        data.createdAt is string && data.createdAt.size() <= 60;
+    }
+
+    match /announcements/{announcementId} {
+      allow get: if isSignedIn() && isValidId(announcementId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() && isValidId(announcementId) &&
+        incoming().keys().hasAll([
+          'workspaceOwnerId', 'title', 'body', 'authorName', 'authorRole',
+          'department', 'priority', 'createdAt'
+        ]) &&
+        incoming().keys().hasOnly([
+          'workspaceOwnerId', 'title', 'body', 'authorName', 'authorRole',
+          'department', 'priority', 'createdAt'
+        ]) &&
+        isValidAnnouncement(incoming());
+      allow update: if isVerifiedUser() && isValidId(announcementId) && isValidAnnouncement(incoming()) &&
+        incoming().workspaceOwnerId == existing().workspaceOwnerId &&
+        incoming().createdAt == existing().createdAt && (
+          isAdmin() ||
+          (existing().workspaceOwnerId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['title', 'body', 'department', 'priority'])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(announcementId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+    }
+
+    // 7. Notifications Collection
+    function isValidNotification(data) {
+      return data.workspaceOwnerId is string && data.workspaceOwnerId.size() <= 128 && data.workspaceOwnerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.workspaceOwnerId == request.auth.uid &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+        data.message is string && data.message.size() <= 500 &&
+        data.category is string && data.category in ['task_status', 'feedback', 'instruction', 'deadline', 'announcement'] &&
+        data.recipientName is string && data.recipientName.size() <= 120 &&
+        data.read is bool &&
+        data.relatedTaskId is string && data.relatedTaskId.size() <= 128 &&
+        data.createdAt is string && data.createdAt.size() <= 60 &&
+        data.updatedAt is string && data.updatedAt.size() <= 60;
+    }
+
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() && isValidId(notificationId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() && isValidId(notificationId) &&
+        incoming().keys().hasAll([
+          'workspaceOwnerId', 'title', 'message', 'category', 'recipientName',
+          'read', 'relatedTaskId', 'createdAt', 'updatedAt'
+        ]) &&
+        incoming().keys().hasOnly([
+          'workspaceOwnerId', 'title', 'message', 'category', 'recipientName',
+          'read', 'relatedTaskId', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidNotification(incoming());
+      allow update: if isVerifiedUser() && isValidId(notificationId) && isValidNotification(incoming()) &&
+        incoming().workspaceOwnerId == existing().workspaceOwnerId &&
+        incoming().createdAt == existing().createdAt && (
+          isAdmin() ||
+          (existing().workspaceOwnerId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['read', 'updatedAt'])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(notificationId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+    }
+
+    // 8. ActivityLogs Collection
+    function isValidActivityLog(data) {
+      return data.workspaceOwnerId is string && data.workspaceOwnerId.size() <= 128 && data.workspaceOwnerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.workspaceOwnerId == request.auth.uid &&
+        data.headline is string && data.headline.size() >= 1 && data.headline.size() <= 240 &&
+        data.subtext is string && data.subtext.size() <= 240 &&
+        data.actorName is string && data.actorName.size() <= 120 &&
+        data.createdAt is string && data.createdAt.size() <= 60;
+    }
+
+    match /activityLogs/{logId} {
+      allow get: if isSignedIn() && isValidId(logId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() && isValidId(logId) &&
+        incoming().keys().hasAll(['workspaceOwnerId', 'headline', 'subtext', 'actorName', 'createdAt']) &&
+        incoming().keys().hasOnly(['workspaceOwnerId', 'headline', 'subtext', 'actorName', 'createdAt']) &&
+        isValidActivityLog(incoming());
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(logId) && (existing().workspaceOwnerId == request.auth.uid || isAdmin());
+    }
+  }
+}
